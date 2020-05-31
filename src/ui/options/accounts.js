@@ -7,11 +7,13 @@ const propsModalOkBtnId = 'scrobbler-ok';
 
 define((require) => {
 	const { getCurrentTab } = require('util/util-browser');
-	const { i18n, runtime, tabs } = require('webextension-polyfill');
-	const ScrobbleService = require('object/scrobble-service');
+	const { extension, i18n, tabs } = require('webextension-polyfill');
+
+	const { webScrobbler } = extension.getBackgroundPage();
+	const ScrobbleService = webScrobbler.getScrobbleService();
 
 	const scrobblerPropertiesMap = {
-		ListenBrainz: {
+		listenbrainz: {
 			userApiUrl: {
 				title: 'accountsUserApiUrl',
 				placeholder: 'accountsUserApiUrlPlaceholder',
@@ -92,7 +94,7 @@ define((require) => {
 		if (!session) {
 			const signInBtn = createButton('accountsSignIn');
 			signInBtn.addEventListener('click', () => {
-				requestAuthenticate(scrobbler);
+				webScrobbler.authenticateScrobbler(scrobbler);
 			});
 
 			buttons.append(signInBtn);
@@ -101,7 +103,7 @@ define((require) => {
 		if (scrobbler.getUsedDefinedProperties().length > 0) {
 			const propsBtn = createButton('accountsScrobblerProps');
 			propsBtn.setAttribute('data-toggle', 'modal');
-			propsBtn.setAttribute('data-label', scrobbler.getLabel());
+			propsBtn.setAttribute('data-scrobbler-id', scrobbler.getId());
 			propsBtn.setAttribute('href', '#scrobbler-props');
 
 			buttons.append(propsBtn);
@@ -120,8 +122,8 @@ define((require) => {
 
 			const logoutBtn = createButton('accountsSignOut');
 			logoutBtn.addEventListener('click', async () => {
-				await requestSignOut(scrobbler);
-				fillAccountContainer(scrobbler);
+				await scrobbler.signOut();
+				await fillAccountContainer(scrobbler);
 			});
 
 			buttons.append(logoutBtn);
@@ -133,6 +135,7 @@ define((require) => {
 
 	function fillPropsDialog(scrobbler) {
 		const scrobblerLabel = scrobbler.getLabel();
+		const scrobblerId = scrobbler.getId();
 
 		const modal = document.getElementById(propsModalId);
 		const title = document.getElementById(propsModalTitleId);
@@ -140,7 +143,7 @@ define((require) => {
 		const body = document.getElementById(propsModalBodyId);
 		body.innerHTML = '';
 
-		const props = scrobblerPropertiesMap[scrobblerLabel];
+		const props = scrobblerPropertiesMap[scrobblerId];
 		for (const propId in props) {
 			const { placeholder, title, type } = props[propId];
 			const value = scrobbler[propId];
@@ -152,16 +155,16 @@ define((require) => {
 
 		title.textContent = i18n.getMessage(
 			'accountsScrobblerPropsTitle', scrobblerLabel);
-		modal.setAttribute('data-label', scrobblerLabel);
+		modal.setAttribute('data-scrobbler-id', scrobblerId);
 	}
 
 	function setupDialog() {
 		// const modalDialog = document.getElementById(propsModalId);
 		$('#scrobbler-props').on('show.bs.modal', (event) => {
 			const button = event.relatedTarget;
-			const label = button.getAttribute('data-label');
+			const scrobblerId = button.getAttribute('data-scrobbler-id');
 
-			fillPropsDialog(ScrobbleService.getScrobblerByLabel(label));
+			fillPropsDialog(ScrobbleService.getScrobblerById(scrobblerId));
 		});
 
 		const okButton = document.getElementById(propsModalOkBtnId);
@@ -170,11 +173,11 @@ define((require) => {
 
 	async function onOkButtonClick() {
 		const modal = document.getElementById(propsModalId);
-		const label = modal.getAttribute('data-label');
-		const scrobbler = ScrobbleService.getScrobblerByLabel(label);
+		const scrobblerId = modal.getAttribute('data-scrobbler-id');
+		const scrobbler = ScrobbleService.getScrobblerById(scrobblerId);
 
 		const userProps = {};
-		const scrobblerProps = scrobblerPropertiesMap[label];
+		const scrobblerProps = scrobblerPropertiesMap[scrobblerId];
 
 		for (const propId in scrobblerProps) {
 			const input = document.getElementById(propId);
@@ -182,7 +185,8 @@ define((require) => {
 
 			userProps[propId] = value;
 		}
-		await requestApplyUserProps(scrobbler, userProps);
+
+		await webScrobbler.applyUserProperties(scrobbler, userProps);
 		fillAccountContainer(scrobbler);
 	}
 
@@ -214,33 +218,6 @@ define((require) => {
 
 		formGroup.append(label, input);
 		return formGroup;
-	}
-
-	function requestAuthenticate(scrobbler) {
-		runtime.sendMessage({
-			type: 'REQUEST_AUTHENTICATE',
-			data: { label: scrobbler.getLabel() },
-		});
-	}
-
-	function requestApplyUserProps(scrobbler, userProps) {
-		// FIXME Called for local instance update
-		scrobbler.applyUserProperties(userProps);
-
-		const label = scrobbler.getLabel();
-		return runtime.sendMessage({
-			type: 'REQUEST_APPLY_USER_OPTIONS', data: { label, userProps },
-		});
-	}
-
-	function requestSignOut(scrobbler) {
-		// FIXME Called for local instance update
-		scrobbler.signOut();
-
-		const label = scrobbler.getLabel();
-		return runtime.sendMessage({
-			type: 'REQUEST_SIGN_OUT', data: { label },
-		});
 	}
 
 	return { initialize };
