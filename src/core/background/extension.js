@@ -80,6 +80,53 @@ define((require) => {
 			GA.pageview(`/background-loaded?version=${this.extVersion}`);
 		}
 
+		/* Public methods */
+
+		/**
+		 * Apply user properties to a given scrobbler and bind it again.
+		 *
+		 * @param {Object} scrobbler Scrobbler instance
+		 * @param {Object} userProperties Object containing user properties
+		 */
+		async applyUserProperties(scrobbler, userProperties) {
+			await scrobbler.applyUserProperties(userProperties);
+			ScrobbleService.bindScrobbler(scrobbler);
+		}
+
+		/**
+		 * Ask a user for grant access to a service covered by a given scrobbler.
+		 *
+		 * @param {Object} scrobbler Scrobbler instance
+		 */
+		async authenticateScrobbler(scrobbler) {
+			try {
+				const authUrl = await scrobbler.getAuthUrl();
+
+				ScrobbleService.bindScrobbler(scrobbler);
+				browser.tabs.create({ url: authUrl });
+			} catch (e) {
+				console.log(
+					`Unable to get auth URL for ${scrobbler.getLabel()}`
+				);
+
+				Notifications.showSignInError(scrobbler, () => {
+					const statusUrl = scrobbler.getStatusUrl();
+					if (statusUrl) {
+						browser.tabs.create({ url: statusUrl });
+					}
+				});
+			}
+		}
+
+		/**
+		 * Return an instance of ScrobbleService. Must be used in UI context.
+		 *
+		 * @return {Object} ScrobbleService instance
+		 */
+		getScrobbleService() {
+			return ScrobbleService;
+		}
+
 		/** Private functions. */
 
 		initializeListeners() {
@@ -194,34 +241,6 @@ define((require) => {
 
 				await this.updateAuthDisplayCount();
 			}
-		}
-
-		/**
-		 * Ask user for grant access for service covered by given scrobbler.
-		 *
-		 * @param  {Object} scrobbler Scrobbler instance
-		 */
-		async authenticateScrobbler(scrobbler) {
-			try {
-				const authUrl = await scrobbler.getAuthUrl();
-
-				ScrobbleService.bindScrobbler(scrobbler);
-				browser.tabs.create({ url: authUrl });
-			} catch (e) {
-				console.log(`Unable to get auth URL for ${scrobbler.getLabel()}`);
-
-				Notifications.showSignInError(scrobbler, () => {
-					const statusUrl = scrobbler.getStatusUrl();
-					if (statusUrl) {
-						browser.tabs.create({ url: statusUrl });
-					}
-				});
-			}
-		}
-
-		async applyUserProperties(scrobbler, userProps) {
-			await scrobbler.applyUserProperties(userProps);
-			ScrobbleService.bindScrobbler(scrobbler);
 		}
 
 		/**
