@@ -8,6 +8,7 @@ define((require) => {
 	const LibreFmScrobbler = require('scrobbler/librefm-scrobbler');
 	const ListenBrainzScrobbler = require('scrobbler/listenbrainz-scrobbler');
 	const ServiceCallResult = require('object/service-call-result');
+	const ScrobbleBatchResult = require('object/scrobble-batch-result');
 
 	/**
 	 * Scrobblers that are bound, meaning they have valid session IDs.
@@ -132,6 +133,37 @@ define((require) => {
 					return this.processErrorResult(scrobbler, result);
 				});
 			}));
+		},
+
+		/**
+		 * Scrobble multiple songs to each bound scrobbler.
+		 *
+		 * @param {Array} songInfoArray Array of objects containing song info
+		 * @return {Promise} Promise that will be resolved then the task will complete
+		 */
+		scrobbleBatch(songInfoArray) {
+			console.log(`Send batch "scrobble" request: ${boundScrobblers.length}`);
+
+			const erroredScrobbles = {};
+
+			const promises = boundScrobblers.map((scrobbler) => {
+				return scrobbler.scrobbleBatch(songInfoArray).catch((trackIndices) => {
+					erroredScrobbles[scrobbler.getId()] = trackIndices;
+				});
+			});
+
+			return Promise.all(promises).catch((err) => {
+				if (Object.keys(erroredScrobbles).length === 0) {
+					throw err;
+				}
+
+				const result = new ScrobbleBatchResult('Unable to scrobble songs');
+				for (const scrobblerId of erroredScrobbles) {
+					result.setFailedSongIndices(scrobblerId, erroredScrobbles[scrobblerId]);
+				}
+
+				return result;
+			});
 		},
 
 		/**

@@ -45,7 +45,9 @@ define((require) => {
 
 			try {
 				const responseData = await this.sendRequest(
-					{ method: 'GET' }, params, { signed: false }
+					{ method: 'GET' },
+					params,
+					{ signed: false }
 				);
 				token = responseData.token;
 			} catch (err) {
@@ -62,6 +64,11 @@ define((require) => {
 			await this.storage.set(data);
 
 			return `${this.getBaseAuthUrl()}?api_key=${this.getApiKey()}&token=${token}`;
+		}
+
+		/** @override */
+		getMaxTrackCountToScrobble() {
+			return 50;
 		}
 
 		/** @override */
@@ -182,6 +189,40 @@ define((require) => {
 		}
 
 		/** @override */
+		async scrobbleBatchWithLimit(songInfoChunk) {
+			const { sessionID } = await this.getSession();
+			const params = {
+				method: 'track.scrobble',
+				sk: sessionID,
+			};
+
+			for (let i = 0; i < songInfoChunk.length; ++i) {
+				const {
+					artist,
+					track,
+					album,
+					albumArtist,
+					timestamp,
+				} = songInfoChunk[i];
+
+				params[`timestamp[${i}]`] = timestamp;
+				params[`artist[${i}]`] = artist;
+				params[`track[${i}]`] = track;
+
+				if (album) {
+					params[`album[${i}]`] = album;
+				}
+
+				if (albumArtist) {
+					params[`albumArtist[${i}]`] = albumArtist;
+				}
+			}
+
+			const response = await this.sendRequest({ method: 'POST' }, params);
+			return AudioScrobbler.processResponse(response);
+		}
+
+		/** @override */
 		async toggleLove(songInfo, isLoved) {
 			const { artist, track } = songInfo;
 			const { sessionID } = await this.getSession();
@@ -255,7 +296,10 @@ define((require) => {
 			const debugMsg = hideUserData(responseData, responseStr);
 
 			if (!response.ok) {
-				this.debugLog(`${params.method} response:\n${debugMsg}`, 'error');
+				this.debugLog(
+					`${params.method} response:\n${debugMsg}`,
+					'error'
+				);
 				throw ServiceCallResult.ERROR_OTHER;
 			}
 

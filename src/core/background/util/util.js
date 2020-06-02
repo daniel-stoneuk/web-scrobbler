@@ -127,6 +127,18 @@ define(() => {
 		});
 	}
 
+	function splitArrayToChunks(array, chunkSize) {
+		if (array.length <= chunkSize) {
+			return [array];
+		}
+
+		const chunks = [];
+		for (let i = 0; i < array.length; i += chunkSize) {
+			chunks.push(array.slice(i, i + chunkSize));
+		}
+
+		return chunks;
+	}
 
 	/**
 	 * Check if an array of scrobbler results contains at least one result
@@ -157,6 +169,7 @@ define(() => {
 		isAnyResult,
 		areAllResults,
 		getSecondsToScrobble,
+		splitArrayToChunks,
 		hideObjectValue,
 		hideStringInText,
 		timeoutPromise,

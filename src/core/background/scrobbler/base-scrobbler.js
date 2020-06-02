@@ -1,8 +1,9 @@
 'use strict';
 
 define((require) => {
-	const Util = require('util/util');
 	const BrowserStorage = require('storage/browser-storage');
+
+	const { debugLog, splitArrayToChunks } = require('util/util');
 
 	/**
 	 * Base scrobbler object.
@@ -133,6 +134,11 @@ define((require) => {
 			throw new Error('This function must be overridden!');
 		}
 
+		// eslint-disable-next-line no-unused-vars
+		async scrobbleBatchWithLimit(songInfoChunk) {
+			throw new Error('This function must be overridden!');
+		}
+
 		/**
 		 * Send an (un)love request.
 		 * Implementation must return ServiceCallResult constant.
@@ -186,6 +192,10 @@ define((require) => {
 			throw new Error('This function must be overridden!');
 		}
 
+		getMaxTrackCountToScrobble() {
+			throw new Error('This function must be overridden!');
+		}
+
 		/**
 		 * Get URL to profile page.
 		 * @return {String} Profile URL
@@ -232,6 +242,27 @@ define((require) => {
 
 		/** Misc */
 
+		async scrobbleBatch(songInfoArray) {
+			const maxChunkSize = this.getMaxTrackCountToScrobble();
+			const chunks = splitArrayToChunks(songInfoArray, maxChunkSize);
+			const results = [];
+
+			const requestPromises = [];
+			chunks.forEach((chunk, chunkIndex) => {
+				requestPromises.push(
+					this.scrobbleBatchWithLimit(chunk).catch((songIndices) => {
+						for (const songIndex of songIndices) {
+							const songIndexOffset = chunkIndex * maxChunkSize;
+							results.push(songIndex + songIndexOffset);
+						}
+					})
+				);
+			});
+
+			await Promise.all(requestPromises);
+			return results;
+		}
+
 		/**
 		 * Helper function to show debug output.
 		 * @param  {String} text Debug message
@@ -239,7 +270,7 @@ define((require) => {
 		 */
 		debugLog(text, logType = 'log') {
 			const message = `${this.getLabel()}: ${text}`;
-			Util.debugLog(message, logType);
+			debugLog(message, logType);
 		}
 
 		/** Internal functions */

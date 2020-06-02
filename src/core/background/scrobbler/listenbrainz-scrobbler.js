@@ -40,6 +40,11 @@ define((require) => {
 		}
 
 		/** @override */
+		getMaxTrackCountToScrobble() {
+			return 50;
+		}
+
+		/** @override */
 		async getProfileUrl() {
 			if (this.userToken) {
 				return null;
@@ -151,6 +156,25 @@ define((require) => {
 					},
 				],
 			};
+			return this.sendRequest(params, sessionID);
+		}
+
+		/** @override */
+		async scrobbleBatchWithLimit(songInfoArray) {
+			const { sessionID } = await this.getSession();
+
+			const params = {
+				listen_type: 'import',
+				payload: [],
+			};
+
+			for (const songInfo of songInfoArray) {
+				params.payload.push({
+					listened_at: songInfo.timestamp,
+					track_metadata: this.makeTrackMetadata(songInfo),
+				});
+			}
+
 			return this.sendRequest(params, sessionID);
 		}
 

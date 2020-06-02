@@ -43,11 +43,10 @@ define((require) => {
 			await this.removeEntry(entryId);
 		}
 
-		onScrobbleAllButtonCLicked() {
-			// Imitate scrobbling with a network delay
-			setTimeout(() => {
-				this.removeAllEntries();
-			}, 1000);
+		async onScrobbleAllButtonCLicked() {
+			const entries = await ScrobbleStorage.getEntries();
+			const entryList = Object.values(entries);
+			await ScrobbleService.scrobbleBatch(entryList);
 		}
 
 		async onScrobbleButonClicked(entryId) {
