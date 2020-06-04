@@ -6,7 +6,7 @@
 define((require) => {
 	const Util = require('util/util');
 	const BaseScrobbler = require('scrobbler/base-scrobbler');
-	const ServiceCallResult = require('object/service-call-result');
+	const ApiCallResult = require('object/api-call-result');
 
 	const listenBrainzTokenPage = 'https://listenbrainz.org/profile/';
 	const apiUrl = 'https://api.listenbrainz.org/1/submit-listens';
@@ -98,7 +98,7 @@ define((require) => {
 					this.debugLog('Failed to get session', 'warn');
 
 					await this.signOut();
-					throw ServiceCallResult.ERROR_AUTH;
+					throw err;
 				}
 
 				data.sessionID = session.sessionID;
@@ -108,7 +108,7 @@ define((require) => {
 
 				return session;
 			} else if (!data.sessionID) {
-				throw ServiceCallResult.ERROR_AUTH;
+				throw this.makeApiCallResult(ApiCallResult.ERROR_AUTH);
 			}
 
 			return {
@@ -200,16 +200,16 @@ define((require) => {
 				result = await response.json();
 			} catch (e) {
 				this.debugLog('Error while sending request', 'error');
-				throw ServiceCallResult.ERROR_OTHER;
+				throw this.makeApiCallResult(ApiCallResult.ERROR_OTHER);
 			}
 
 			switch (response.status) {
 				case 400:
 					this.debugLog('Invalid JSON sent', 'error');
-					throw ServiceCallResult.ERROR_AUTH;
+					throw this.makeApiCallResult(ApiCallResult.ERROR_AUTH);
 				case 401:
 					this.debugLog('Invalid Authorization sent', 'error');
-					throw ServiceCallResult.ERROR_AUTH;
+					throw this.makeApiCallResult(ApiCallResult.ERROR_AUTH);
 			}
 
 			this.debugLog(JSON.stringify(result, null, 2));
@@ -242,7 +242,7 @@ define((require) => {
 				return session;
 			}
 
-			throw ServiceCallResult.ERROR_AUTH;
+			throw this.makeApiCallResult(ApiCallResult.ERROR_AUTH);
 		}
 
 		async fetchSession(url) {
@@ -283,10 +283,10 @@ define((require) => {
 
 		processResult(result) {
 			if (result.status !== 'ok') {
-				return ServiceCallResult.ERROR_OTHER;
+				throw this.makeApiCallResult(ApiCallResult.ERROR_OTHER);
 			}
 
-			return ServiceCallResult.RESULT_OK;
+			return this.makeApiCallResult(ApiCallResult.RESULT_OK);
 		}
 
 		makeTrackMetadata(songInfo) {

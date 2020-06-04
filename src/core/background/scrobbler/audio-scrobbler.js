@@ -3,7 +3,7 @@
 define((require) => {
 	const MD5 = require('md5');
 	const BaseScrobbler = require('scrobbler/base-scrobbler');
-	const ServiceCallResult = require('object/service-call-result');
+	const ApiCallResult = require('object/api-call-result');
 
 	const { hideStringInText, timeoutPromise } = require('util/util');
 	const { createQueryString } = require('util/util-browser');
@@ -97,7 +97,7 @@ define((require) => {
 					this.debugLog('Failed to trade token for session', 'warn');
 
 					await this.signOut();
-					throw ServiceCallResult.ERROR_AUTH;
+					throw this.makeApiCallResult(ApiCallResult.ERROR_AUTH);
 				}
 
 				data.sessionID = session.sessionID;
@@ -107,7 +107,7 @@ define((require) => {
 
 				return session;
 			} else if (!data.sessionID) {
-				throw ServiceCallResult.ERROR_AUTH;
+				throw this.makeApiCallResult(ApiCallResult.ERROR_AUTH);
 			}
 
 			return {
@@ -146,7 +146,7 @@ define((require) => {
 			}
 
 			const response = await this.sendRequest({ method: 'POST' }, params);
-			return AudioScrobbler.processResponse(response);
+			return this.processResponse(response);
 		}
 
 		/** @override */
@@ -171,21 +171,22 @@ define((require) => {
 
 			const response = await this.sendRequest({ method: 'POST' }, params);
 
-			const result = AudioScrobbler.processResponse(response);
-			if (result === ServiceCallResult.RESULT_OK) {
+			try {
+				return this.processResponse(response);
+			} catch (err) {
 				const scrobbles = response.scrobbles;
 
 				if (scrobbles) {
 					const acceptedCount = scrobbles['@attr'].accepted;
 					if (acceptedCount === '0') {
-						return ServiceCallResult.RESULT_IGNORE;
+						return this.makeApiCallResult(
+							ApiCallResult.ERROR_OTHER
+						);
 					}
-				} else {
-					return ServiceCallResult.ERROR_OTHER;
 				}
 			}
 
-			return result;
+			return this.makeApiCallResult(ApiCallResult.ERROR_OTHER);
 		}
 
 		/** @override */
@@ -219,7 +220,25 @@ define((require) => {
 			}
 
 			const response = await this.sendRequest({ method: 'POST' }, params);
-			return AudioScrobbler.processResponse(response);
+			const result = this.processResponse(response);
+
+			const scrobbledSongs =
+				response.scrobbles && response.scrobbles.scrobble;
+
+			if (scrobbledSongs) {
+				const erroredSongs = [];
+				scrobbledSongs.forEach((entry, index) => {
+					const { ignoredMessage } = entry;
+					if (ignoredMessage.code !== '0') {
+						erroredSongs.push(index);
+					}
+				});
+				result.setContextInfo(erroredSongs);
+
+				throw result;
+			}
+
+			return result;
 		}
 
 		/** @override */
@@ -234,7 +253,7 @@ define((require) => {
 			};
 
 			const response = await this.sendRequest({ method: 'POST' }, params);
-			return AudioScrobbler.processResponse(response);
+			return this.processResponse(response);
 		}
 
 		/** @override */
@@ -255,10 +274,7 @@ define((require) => {
 			const params = { method: 'auth.getsession', token };
 
 			const response = await this.sendRequest({ method: 'GET' }, params);
-			const result = AudioScrobbler.processResponse(response);
-			if (result !== ServiceCallResult.RESULT_OK) {
-				throw ServiceCallResult.ERROR_AUTH;
-			}
+			this.processResponse(response);
 
 			const sessionName = response.session.name;
 			const sessionID = response.session.key;
@@ -289,7 +305,7 @@ define((require) => {
 				response = await timeoutPromise(timeout, promise);
 				responseData = await response.json();
 			} catch (e) {
-				throw ServiceCallResult.ERROR_OTHER;
+				throw this.makeApiCallResult(ApiCallResult.ERROR_OTHER);
 			}
 
 			const responseStr = JSON.stringify(responseData, null, 2);
@@ -300,7 +316,7 @@ define((require) => {
 					`${params.method} response:\n${debugMsg}`,
 					'error'
 				);
-				throw ServiceCallResult.ERROR_OTHER;
+				throw this.makeApiCallResult(ApiCallResult.ERROR_OTHER);
 			}
 
 			this.debugLog(`${params.method} response:\n${debugMsg}`);
@@ -351,12 +367,12 @@ define((require) => {
 		 * @param  {Object} responseData Response data
 		 * @return {Object} Response result
 		 */
-		static processResponse(responseData) {
+		processResponse(responseData) {
 			if (responseData.error) {
-				return ServiceCallResult.ERROR_OTHER;
+				throw this.makeApiCallResult(ApiCallResult.ERROR_OTHER);
 			}
 
-			return ServiceCallResult.RESULT_OK;
+			return this.makeApiCallResult(ApiCallResult.RESULT_OK);
 		}
 	}
 

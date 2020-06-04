@@ -9,7 +9,7 @@ define((require) => {
 	const ControllerMode = require('object/controller-mode');
 	const ControllerEvent = require('object/controller-event');
 	const ScrobbleService = require('object/scrobble-service');
-	const ServiceCallResult = require('object/service-call-result');
+	const ApiCallResult = require('object/api-call-result');
 	const SavedEdits = require('storage/saved-edits');
 	const ScrobbleStorage = require('storage/scrobble-storage');
 
@@ -510,7 +510,7 @@ define((require) => {
 			this.currentSong.flags.isMarkedAsPlaying = true;
 
 			const results = await ScrobbleService.sendNowPlaying(this.currentSong.getInfo());
-			if (Util.isAnyResult(results, ServiceCallResult.RESULT_OK)) {
+			if (Util.isAnyResult(results, ApiCallResult.RESULT_OK)) {
 				this.debugLog('Song set as now playing');
 				this.setMode(ControllerMode.Playing);
 			} else {
@@ -536,7 +536,7 @@ define((require) => {
 		 */
 		async scrobbleSong() {
 			const results = await ScrobbleService.scrobble(this.currentSong.getInfo());
-			if (Util.isAnyResult(results, ServiceCallResult.RESULT_OK)) {
+			if (Util.isAnyResult(results, ApiCallResult.RESULT_OK)) {
 				this.debugLog('Scrobbled successfully');
 
 				this.currentSong.flags.isScrobbled = true;
@@ -545,7 +545,7 @@ define((require) => {
 				this.onSongUpdated();
 
 				this.dispatchEvent(ControllerEvent.SongScrobbled);
-			} else if (Util.areAllResults(results, ServiceCallResult.RESULT_IGNORE)) {
+			} else if (Util.areAllResults(results, ApiCallResult.RESULT_IGNORE)) {
 				this.debugLog('Song is ignored by service');
 				this.setMode(ControllerMode.Ignored);
 			} else {

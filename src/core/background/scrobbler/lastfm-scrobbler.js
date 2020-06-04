@@ -5,7 +5,6 @@
  */
 define((require) => {
 	const AudioScrobbler = require('scrobbler/audio-scrobbler');
-	const ServiceCallResult = require('object/service-call-result');
 
 	class LastFmScrobbler extends AudioScrobbler {
 		/** @override */
@@ -79,11 +78,7 @@ define((require) => {
 				params,
 				false
 			);
-			const result = AudioScrobbler.processResponse(responseData);
-			if (result !== ServiceCallResult.RESULT_OK) {
-				throw new Error('Unable to load song info');
-			}
-
+			this.processResponse(responseData);
 			return this.parseSongInfo(responseData);
 		}
 

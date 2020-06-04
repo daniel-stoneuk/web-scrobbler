@@ -4,10 +4,10 @@
  * Service to handle all scrobbling behavior.
  */
 define((require) => {
+	const ApiCallResult = require('object/api-call-result');
 	const LastFmScrobbler = require('scrobbler/lastfm-scrobbler');
 	const LibreFmScrobbler = require('scrobbler/librefm-scrobbler');
 	const ListenBrainzScrobbler = require('scrobbler/listenbrainz-scrobbler');
-	const ServiceCallResult = require('object/service-call-result');
 	const ScrobbleBatchResult = require('object/scrobble-batch-result');
 
 	/**
@@ -217,8 +217,8 @@ define((require) => {
 		 * @return {Promise} Promise resolved with result object
 		 */
 		async processErrorResult(scrobbler, result) {
-			const isOtherError = result === ServiceCallResult.ERROR_OTHER;
-			const isAuthError = result === ServiceCallResult.ERROR_AUTH;
+			const isOtherError = result.is(ApiCallResult.ERROR_OTHER);
+			const isAuthError = result.is(ApiCallResult.ERROR_AUTH);
 
 			if (!(isOtherError || isAuthError)) {
 				throw new Error(`Invalid result: ${result}`);

@@ -2,14 +2,15 @@
 
 define((require) => {
 	const BrowserStorage = require('storage/browser-storage');
+	const ApiCallResult = require('object/api-call-result');
 
 	const { debugLog, splitArrayToChunks } = require('util/util');
 
 	/**
 	 * Base scrobbler object.
 	 *
-	 * Descendants of this object MUST return ServiceCallResult constants
-	 * as result or error value in functions that perform API calls.
+	 * Descendants of this object MUST return ApiCallResult object
+	 * as a result or as an error in functions that perform API calls.
 	 *
 	 * Each scrobbler has its storage which can contain session data and/or
 	 * other user data.
@@ -114,7 +115,7 @@ define((require) => {
 
 		/**
 		 * Send a now playing request.
-		 * Implementation must return ServiceCallResult constant.
+		 * Implementation must return an ApiCallResult object.
 		 *
 		 * @param  {Object} songInfo Object containing song info
 		 */
@@ -125,7 +126,7 @@ define((require) => {
 
 		/**
 		 * Send a scrobble request.
-		 * Implementation must return ServiceCallResult constant.
+		 * Implementation must return an ApiCallResult object.
 		 *
 		 * @param  {Object} songInfo Object containing song info
 		 */
@@ -141,7 +142,7 @@ define((require) => {
 
 		/**
 		 * Send an (un)love request.
-		 * Implementation must return ServiceCallResult constant.
+		 * Implementation must return an ApiCallResult object.
 		 *
 		 * @param  {Object} songInfo Object containing song info
 		 * @param  {Boolean} isLoved Flag means song should be loved or not
@@ -261,6 +262,16 @@ define((require) => {
 
 			await Promise.all(requestPromises);
 			return results;
+		}
+
+		/**
+		 * Return a new ApiCallResult object with the scrobbler ID attached.
+		 *
+		 * @param {String} resultType ApiCallResult type
+		 * @return {Object} ApiCallResult object
+		 */
+		makeApiCallResult(resultType) {
+			return new ApiCallResult(resultType, this.getId());
 		}
 
 		/**
