@@ -189,10 +189,20 @@ define((require) => {
 
 		/**
 		 * Get all registered scrobblers.
-		 * @return {Array} Array of bound scrobblers
+		 *
+		 * @return {Array} Array of registered scrobblers
 		 */
 		getRegisteredScrobblers() {
 			return registeredScrobblers;
+		},
+
+		/**
+		 * Get all bound scrobblers.
+		 *
+		 * @return {Array} Array of bound scrobblers
+		 */
+		getBoundScrobblers() {
+			return boundScrobblers;
 		},
 
 		/**

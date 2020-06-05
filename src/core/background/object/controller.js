@@ -250,7 +250,13 @@ define((require) => {
 		 */
 		async processNewState(newState) {
 			if (await this.isNeedToAddSongToScrobbleStorage()) {
-				ScrobbleStorage.addSong(this.currentSong.getInfo());
+				const boundScrobblerIds = ScrobbleService.getBoundScrobblers().map(
+					(scrobbler) => scrobbler.getId()
+				);
+				ScrobbleStorage.addSong(
+					this.currentSong.getInfo(),
+					boundScrobblerIds
+				);
 			}
 
 			/*
