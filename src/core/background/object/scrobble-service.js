@@ -147,8 +147,8 @@ define((require) => {
 			const erroredScrobbles = {};
 
 			const promises = boundScrobblers.map((scrobbler) => {
-				return scrobbler.scrobbleBatch(songInfoArray).catch((trackIndices) => {
-					erroredScrobbles[scrobbler.getId()] = trackIndices;
+				return scrobbler.scrobbleBatch(songInfoArray).catch((err) => {
+					erroredScrobbles[err.getScrobblerId()] = err.getContextInfo();
 				});
 			});
 
@@ -158,7 +158,7 @@ define((require) => {
 				}
 
 				const result = new ScrobbleBatchResult('Unable to scrobble songs');
-				for (const scrobblerId of erroredScrobbles) {
+				for (const scrobblerId in erroredScrobbles) {
 					result.setFailedSongIndices(scrobblerId, erroredScrobbles[scrobblerId]);
 				}
 
